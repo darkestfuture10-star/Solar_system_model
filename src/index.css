@@ -1,1 +1,181 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Orbitron", "Space Grotesk", ui-sans-serif, sans-serif;
+  --font-body: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  --color-void: #04070f;
+  --color-abyss: #070b16;
+  --color-panel: #0a1122;
+  --color-ink: #dbe6ff;
+  --color-dim: #8ba3cd;
+  --color-faint: #5a6f95;
+  --color-ember: #ffc84d;
+  --color-ember-soft: #ffd98a;
+  --color-halo: #a9bfe4;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #04070f;
+  color: #dbe6ff;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(255, 200, 77, 0.28);
+  color: #fff6df;
+}
+
+/* ---------- simulation elements ---------- */
+
+.planet-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.planet-node.is-hover {
+  transform: scale(1.32);
+}
+.planet-node.is-selected {
+  transform: scale(1.14);
+}
+
+.select-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-spin 9s linear infinite;
+}
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sun-glow {
+  animation: sun-breathe 5.5s ease-in-out infinite;
+}
+.sun-glow-slow {
+  animation: sun-breathe 8s ease-in-out infinite reverse;
+}
+@keyframes sun-breathe {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.58;
+  }
+}
+
+.belt {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-spin 320s linear infinite;
+}
+
+.svg-label {
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  fill: #a9bfe4;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.svg-label-strong {
+  fill: #ffd98a;
+}
+
+/* ---------- starfield ---------- */
+
+.starfield-drift {
+  animation: star-drift 540s linear infinite;
+  transform-origin: center;
+}
+@keyframes star-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tw {
+  animation: twinkle var(--tw-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--tw-del, 0s);
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* ---------- interface ---------- */
+
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 175, 225, 0.16) transparent;
+}
+.panel-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 175, 225, 0.16);
+  border-radius: 8px;
+}
+
+.kbd {
+  font-family: "Orbitron", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 175, 225, 0.22);
+  border-bottom-width: 2px;
+  background: rgba(148, 175, 225, 0.07);
+  color: #a9bfe4;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes fade-slide {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-slide {
+  animation: fade-slide 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
