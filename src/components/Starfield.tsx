@@ -1,3 +1,27 @@
+/*
+ * Starfield.tsx — the ambient background behind the simulation.
+ * Pure decoration: zero props, zero state, pointer-events: none.
+ *
+ * LAYER STACK (bottom → top):
+ *   1. base wash      — one radial gradient: deep blue at the Sun's
+ *                       position, near-black at the edges
+ *   2. nebula tints   — three huge blurred color blobs (teal / rust /
+ *                       slate) so the void isn't uniformly black
+ *   3. star layer     — 180 SVG circles on a slightly oversized div
+ *                       (.starfield-drift in index.css rotates the whole
+ *                       layer once every 9 minutes; ~16% of stars also
+ *                       twinkle individually via the .tw class)
+ *   4. vignette       — darkens the corners to pull the eye to the Sun
+ *
+ * NOTES FOR THE NEXT PERSON:
+ *  - memo() + useMemo(): star positions are rolled once per mount and
+ *    never again, so the parent re-rendering 60×/s costs nothing here.
+ *  - the star layer is inset -18% on purpose — a rotating rectangle
+ *    reveals its corners otherwise. Don't "fix" the overscan.
+ *  - twinkle speed/delay are passed to CSS as custom properties
+ *    (--tw-dur / --tw-del), consumed by .tw in index.css.
+ */
+
 import { memo, useMemo, type CSSProperties } from "react";
 
 interface Star {
@@ -73,6 +97,8 @@ const Starfield = memo(function Starfield() {
               cx={s.x}
               cy={s.y}
               r={s.r}
+              /* every 9th star warm, every 7th blue, the rest white —
+                 cheap way to get color temperature variation */
               fill={i % 9 === 0 ? "#ffe9c0" : i % 7 === 0 ? "#bcd2ff" : "#e8f0ff"}
               opacity={s.o}
               className={s.tw ? "tw" : undefined}

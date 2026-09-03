@@ -1,17 +1,45 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   bodies.ts — THE SINGLE SOURCE OF TRUTH
+
+   Every number, color and fun fact the app shows lives in the BODIES
+   table below. The map (Orrery.tsx), the dossier panel (InfoPanel.tsx)
+   and the footer strip (App.tsx) all read from this one array — change
+   a value here and it changes everywhere, consistently.
+
+   HOW TO ADD A NEW BODY (say, Pluto):
+     1. Push an object into BODIES with a unique id, a real periodDays,
+        and a real au — the map positions it automatically.
+     2. Give it an r (visual radius in svg units, 5–21 works) and three
+        colors (light/dark are the sphere-gradient highlights & shadow).
+     3. Pick an angle0 in radians (0–6.28) so it doesn't start stacked
+        on top of another planet.
+   That's it — no component changes needed. It appears in the index,
+   the quick-pick strip, and the map.
+
+   SPEED / FEEL KNOBS:
+     BASE_DAYS_PER_SECOND — how many simulated Earth days pass per real
+                            second at 1× speed. The whole app's tempo.
+     SPEED_OPTIONS        — the multiplier buttons in the footer.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 export interface CelestialBody {
   id: string;
   name: string;
   kind: string;
+  /** mid-tone of the sphere gradient (the planet's "identity" color) */
   color: string;
+  /** gradient highlight, top-left */
   colorLight: string;
+  /** gradient shadow, bottom-right */
   colorDark: string;
-  /** visual radius in svg units */
+  /** visual radius in svg units — NOT to scale, chosen for readability */
   r: number;
   /** semi-major axis in AU (0 for the Sun) */
   au: number;
   /** sidereal orbital period in Earth days (0 for the Sun) */
   periodDays: number;
   diameterKm: number;
+  /** mean distance from the Sun in million km (null → it IS the center) */
   distanceMkm: number | null;
   dayLength: string;
   moons: string;
@@ -26,18 +54,32 @@ export interface CelestialBody {
 
 export const TAU = Math.PI * 2;
 export const EARTH_DIAMETER_KM = 12742;
+
 /** simulated Earth-days that elapse per real second at 1× speed */
 export const BASE_DAYS_PER_SECOND = 20;
+/** the ×0.5 … ×10 buttons in the footer (Controls.tsx) */
 export const SPEED_OPTIONS = [0.5, 1, 2, 5, 10];
 
 /**
  * True distances are compressed with a power curve so that Neptune and
  * Mercury share one screen — the UI flags that nothing is to scale.
+ *
+ *   orbitRadius = 70 + 58 × au^0.55
+ *
+ * 70 = inner padding so Mercury clears the Sun's glow.
+ * 58 = growth factor; Neptune (30 AU) lands at ≈ 380 svg units, inside
+ * the 500-unit half-width of the viewBox. The 0.55 exponent squashes the
+ * outer system without making the inner orbits degenerate — tweak it if
+ * you add bodies past Neptune (Pluto would land ~395, still fine).
  */
 export function orbitRadiusOf(au: number): number {
   return 70 + 58 * Math.pow(au, 0.55);
 }
 
+/* ── THE TABLE ──────────────────────────────────────────────────────────
+   Ordered Sun-first, then by distance from it. Real data: NASA planetary
+   fact sheets (periods, diameters, mean distances, moon counts).
+   ──────────────────────────────────────────────────────────────────── */
 export const BODIES: CelestialBody[] = [
   {
     id: "sun",
@@ -206,12 +248,17 @@ export const BODIES: CelestialBody[] = [
   },
 ];
 
+/** everything except the Sun — used by the map (orbit rings) and panels */
 export const PLANETS = BODIES.filter((b) => b.id !== "sun");
 
+/* ── formatting helpers (shared by InfoPanel + Controls) ── */
+
+/** 60190 → "60,190" — thousands separators, en-US style */
 export function fmtInt(n: number): string {
   return Math.floor(n).toLocaleString("en-US");
 }
 
+/** orbital period as a human pair: big unit + the other one as context */
 export function formatPeriod(days: number): { main: string; sub: string } {
   if (days >= 2000) {
     return { main: `${(days / 365.25).toFixed(1)} years`, sub: `${fmtInt(days)} Earth days` };
@@ -219,10 +266,12 @@ export function formatPeriod(days: number): { main: string; sub: string } {
   return { main: `${days} days`, sub: `${(days / 365.25).toFixed(2)} Earth years` };
 }
 
+/** compact period for the body index list ("88 d", "11.9 yr") */
 export function shortPeriod(days: number): string {
   return days >= 2000 ? `${(days / 365.25).toFixed(1)} yr` : `${days} d`;
 }
 
+/** million-km distance with a thousands separator once it gets big */
 export function formatDistanceMkm(mkm: number): string {
   return mkm >= 1000 ? `${mkm.toLocaleString("en-US")} M km` : `${mkm} M km`;
 }

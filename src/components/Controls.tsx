@@ -1,3 +1,19 @@
+/*
+ * Controls.tsx — the mission-control footer.
+ *
+ * ANATOMY (left → right, wrapping on narrow screens):
+ *   ZONE 1  transport   — big play/pause button (the visual anchor of
+ *                         the app; it glows while running) + reset
+ *   ZONE 2  sim speed   — segmented ×0.5…×10 buttons from SPEED_OPTIONS
+ *   ZONE 3  layers      — Orbits / Labels toggle pills
+ *   ZONE 4  clock       — DAY counter + Earth years + effective rate,
+ *                         pinned right with ml-auto
+ *
+ * All state lives in App.tsx — this component is deliberately dumb:
+ * it renders props and calls callbacks. Keep it that way and it stays
+ * trivially testable.
+ */
+
 import { BASE_DAYS_PER_SECOND, SPEED_OPTIONS, fmtInt } from "../data/bodies";
 
 interface ControlsProps {
@@ -13,6 +29,7 @@ interface ControlsProps {
   simDays: number;
 }
 
+/** little on/off pill with a glowing dot — used for Orbits + Labels */
 function TogglePill({
   active,
   label,
@@ -58,7 +75,7 @@ export default function Controls({
 
   return (
     <footer className="relative z-30 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/[0.07] bg-abyss/95 px-4 py-3 sm:px-6">
-      {/* transport */}
+      {/* ── ZONE 1: transport ── */}
       <div className="flex items-center gap-2.5">
         <button
           onClick={onTogglePlay}
@@ -70,6 +87,7 @@ export default function Controls({
               : "border-ember bg-ember text-[#231303] shadow-[0_0_22px_rgba(255,200,77,0.4)] hover:bg-ember-soft"
           }`}
         >
+          {/* inline icons so the build has zero icon dependencies */}
           {playing ? (
             <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
               <path d="M7 4.5h3.6v15H7zM13.4 4.5H17v15h-3.6z" />
@@ -95,7 +113,7 @@ export default function Controls({
 
       <div className="hidden h-8 w-px bg-white/10 sm:block" />
 
-      {/* speed */}
+      {/* ── ZONE 2: speed — segmented control, active = filled ── */}
       <div>
         <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.24em] text-faint">
           Sim speed
@@ -121,13 +139,14 @@ export default function Controls({
 
       <div className="hidden h-8 w-px bg-white/10 md:block" />
 
-      {/* layer toggles */}
+      {/* ── ZONE 3: layer toggles ── */}
       <div className="flex items-center gap-2">
         <TogglePill active={showOrbits} label="Orbits" onClick={onToggleOrbits} />
         <TogglePill active={showLabels} label="Labels" onClick={onToggleLabels} />
       </div>
 
-      {/* mission clock */}
+      {/* ── ZONE 4: mission clock — proves the sim is alive even when
+             the eye is on the footer ── */}
       <div className="ml-auto text-right">
         <div className="font-display text-sm font-bold tracking-[0.08em] text-ember-soft">
           DAY {fmtInt(simDays)}

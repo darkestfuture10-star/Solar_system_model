@@ -1,3 +1,37 @@
+/*
+ * Orrery.tsx — THE SIMULATION. One full-screen SVG, no canvas, no lib.
+ *
+ * COORDINATES: viewBox is a 1000×1000 square with the Sun at center
+ * (C, C) = (500, 500). preserveAspectRatio="xMidYMid meet" letterboxes
+ * it, so the system always fits and stays circular on any screen.
+ * Orbit radii come from orbitRadiusOf() in data/bodies.ts.
+ *
+ * DRAW ORDER = Z-ORDER — SVG has no z-index, later nodes paint on top:
+ *   1. click-catcher rect → click on empty space deselects
+ *   2. orbit paths        → faint rings, toggled by the "Orbits" pill
+ *   3. asteroid belt      → 130 pebbles between Mars and Jupiter
+ *   4. sunline            → dashed connector from Sun → selected planet
+ *   5. the Sun            → breathing glow + body + hit area + label
+ *   6. planets            → one <g> per planet, positioned by pure trig
+ *
+ * THE ONLY PHYSICS IN THE APP (numbers live in data/bodies.ts):
+ *
+ *   θ(t) = angle0 + (simDays / periodDays) × 2π
+ *   x    = C + R·cos θ
+ *   y    = C − R·sin θ        ← note the minus: SVG's y grows downward,
+ *                                so subtracting keeps motion counter-
+ *                                clockwise (prograde), like the real
+ *                                system seen from above the north pole.
+ *
+ * simDays arrives from the rAF clock in App.tsx. Because every planet
+ * divides that SAME clock by its own real period, relative speeds are
+ * exact: Mercury laps Earth ~4.15×, Neptune barely crawls.
+ *
+ * PERFORMANCE: re-renders every frame (positions change), but each
+ * planet is ~10 nodes and the belt never recomputes (useMemo), so the
+ * whole tree is trivial for the browser at 60fps.
+ */
+
 import { useMemo } from "react";
 import {
   BODIES,
@@ -17,6 +51,7 @@ interface OrreryProps {
   onHover: (id: string | null) => void;
 }
 
+/** Sun position = viewBox center */
 const C = 500;
 
 interface Pebble {
@@ -39,11 +74,15 @@ export default function Orrery({
   const sunSelected = selectedId === "sun";
   const sunHovered = hoveredId === "sun";
 
+  /* asteroid belt: positions rolled once at mount. The whole <g> is
+     rotated by CSS (.belt in index.css, one turn per 320s), so these
+     130 circles never need to be recomputed or repositioned. */
   const belt = useMemo<Pebble[]>(() => {
     const arr: Pebble[] = [];
     for (let i = 0; i < 130; i++) {
       arr.push({
         a: Math.random() * TAU,
+        /* 163–197 svg units: between Mars (~114) and Jupiter (~226) */
         rad: 163 + Math.random() * 34,
         r: 0.6 + Math.random() * 0.9,
         o: 0.12 + Math.random() * 0.3,
@@ -52,6 +91,8 @@ export default function Orrery({
     return arr;
   }, []);
 
+  /* endpoints of the dashed sunline — same θ formula as the planet
+     itself, so the line never drifts away from its planet. */
   const selectedPlanet = PLANETS.find((p) => p.id === selectedId) ?? null;
   let selectedPos: { x: number; y: number } | null = null;
   if (selectedPlanet) {
@@ -60,6 +101,8 @@ export default function Orrery({
     selectedPos = { x: C + R * Math.cos(th), y: C - R * Math.sin(th) };
   }
 
+  /* labels show when the global toggle is on, OR the body is hovered,
+     OR it's selected — hover always answers "what is this dot?" */
   const labelVisible = (b: CelestialBody) =>
     showLabels || hoveredId === b.id || selectedId === b.id;
 
@@ -72,6 +115,7 @@ export default function Orrery({
       aria-label="Map of the solar system. Click any planet or the Sun to inspect it."
     >
       <defs>
+        {/* one sphere gradient per body, referenced as fill="url(#g-id)" */}
         {BODIES.map((b) => (
           <radialGradient key={b.id} id={`g-${b.id}`} cx="35%" cy="32%" r="78%">
             <stop offset="0%" stopColor={b.colorLight} />
@@ -79,21 +123,25 @@ export default function Orrery({
             <stop offset="100%" stopColor={b.colorDark} />
           </radialGradient>
         ))}
+        {/* blur strengths for the Sun's two-layer corona */}
         <filter id="f-blur6" x="-80%" y="-80%" width="260%" height="260%">
           <feGaussianBlur stdDeviation="6" />
         </filter>
         <filter id="f-blur16" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="16" />
         </filter>
+        {/* keeps Jupiter's cloud bands inside its disc */}
         <clipPath id="clip-jupiter">
           <circle cx="0" cy="0" r={21} />
         </clipPath>
       </defs>
 
-      {/* click on empty space to deselect */}
+      {/* ── 1. click-catcher: empty space deselects ── */}
       <rect width="1000" height="1000" fill="transparent" onClick={() => onSelect(null)} />
 
-      {/* orbit paths */}
+      {/* ── 2. orbit paths ──
+         stroke brightens on hover/selection — the hint that a body is
+         interactive before you commit to clicking it. */}
       {showOrbits &&
         PLANETS.map((p) => {
           const R = orbitRadiusOf(p.au);
@@ -119,7 +167,7 @@ export default function Orrery({
           );
         })}
 
-      {/* asteroid belt */}
+      {/* ── 3. asteroid belt (rotates as a group via CSS) ── */}
       <g className="belt">
         {belt.map((p, i) => (
           <circle
@@ -133,7 +181,7 @@ export default function Orrery({
         ))}
       </g>
 
-      {/* sunline to selected planet */}
+      {/* ── 4. sunline to the selected planet ── */}
       {selectedPos && (
         <line
           x1={C}
@@ -147,7 +195,10 @@ export default function Orrery({
         />
       )}
 
-      {/* the Sun */}
+      {/* ── 5. THE SUN ──
+         Two blurred circles = corona (outer breathes slow, inner fast —
+         see .sun-glow* in index.css). stopPropagation so its click
+         doesn't fall through to the click-catcher rect. */}
       <g
         transform={`translate(${C} ${C})`}
         className="cursor-pointer"
@@ -160,6 +211,9 @@ export default function Orrery({
       >
         <circle r={82} fill="#ff8a1e" opacity={0.16} filter="url(#f-blur16)" className="sun-glow-slow" />
         <circle r={48} fill="#ffab2e" opacity={0.42} filter="url(#f-blur6)" className="sun-glow" />
+        {/* .planet-node is the group CSS scales on hover/select —
+             transform-box: fill-box (index.css) keeps the scale
+             centered on the body instead of the SVG origin. */}
         <g className={`planet-node${sunHovered ? " is-hover" : ""}${sunSelected ? " is-selected" : ""}`}>
           <circle r={sun.r} fill={`url(#g-sun)`} />
         </g>
@@ -175,6 +229,8 @@ export default function Orrery({
           />
         )}
         <circle r={44} fill="transparent" />
+        {/* SVG <text> can't take Tailwind classes — styled via
+             .svg-label in index.css */}
         {labelVisible(sun) && (
           <text y={-(sun.r + 20)} className={`svg-label${sunSelected ? " svg-label-strong" : ""}`}>
             SUN
@@ -182,7 +238,7 @@ export default function Orrery({
         )}
       </g>
 
-      {/* planets */}
+      {/* ── 6. PLANETS — one <g> each, positioned by the θ formula ── */}
       {PLANETS.map((p) => {
         const R = orbitRadiusOf(p.au);
         const theta = p.angle0 + (simDays / p.periodDays) * TAU;
@@ -190,14 +246,21 @@ export default function Orrery({
         const y = C - R * Math.sin(theta);
         const selected = selectedId === p.id;
         const hovered = hoveredId === p.id;
+        /* ⚠ the invisible hit circle below (min 16 svg units) is the
+           real click target — without it, Mercury is untappable on
+           touch screens. Don't remove it when restyling. */
         const hitR = Math.max(16, p.r + 9);
         const nodeClass = `planet-node${hovered ? " is-hover" : ""}${selected ? " is-selected" : ""}`;
 
+        /* Saturn's rings = two ellipses, drawn in TWO HALVES so the
+           planet sits "inside" them: full ellipses behind the disc,
+           then paths tracing only the FRONT arc over the disc. */
         const ringRx1 = p.r * 2.05;
         const ringRy1 = p.r * 0.66;
         const ringRx2 = p.r * 1.55;
         const ringRy2 = p.r * 0.5;
 
+        /* Earth's Moon — same θ formula, real sidereal month (27.32 d) */
         let moon: { mx: number; my: number } | null = null;
         if (p.hasMoon) {
           const ma = (simDays / 27.32) * TAU;
@@ -217,7 +280,7 @@ export default function Orrery({
             onPointerLeave={() => onHover(null)}
           >
             <g className={nodeClass}>
-              {/* saturn — back rings */}
+              {/* saturn — back rings (full ellipses, behind the disc) */}
               {p.hasRings && (
                 <g transform="rotate(-16)" opacity={0.85}>
                   <ellipse rx={ringRx1} ry={ringRy1} fill="none" stroke="#cbb27e" strokeWidth="3.2" opacity="0.65" />
@@ -227,7 +290,8 @@ export default function Orrery({
 
               <circle r={p.r} fill={`url(#g-${p.id})`} />
 
-              {/* jupiter — cloud bands + great red spot */}
+              {/* jupiter — cloud bands + great red spot, clipped to the
+                  disc by #clip-jupiter (defs above) */}
               {p.bands && (
                 <g clipPath="url(#clip-jupiter)">
                   <rect x={-p.r} y={-p.r * 0.58} width={p.r * 2} height={p.r * 0.2} fill="#8a6238" opacity="0.4" />
@@ -237,7 +301,7 @@ export default function Orrery({
                 </g>
               )}
 
-              {/* saturn — front rings */}
+              {/* saturn — front rings (bottom arc only, over the disc) */}
               {p.hasRings && (
                 <g transform="rotate(-16)">
                   <path
@@ -259,7 +323,7 @@ export default function Orrery({
                 </g>
               )}
 
-              {/* earth's moon */}
+              {/* earth's moon + its faint orbit ring */}
               {moon && (
                 <>
                   {showOrbits && <circle r={17} fill="none" stroke="rgba(148,175,225,0.22)" strokeWidth="0.7" />}
@@ -268,6 +332,7 @@ export default function Orrery({
               )}
             </g>
 
+            {/* rotating dashed halo around the selected body (.select-ring) */}
             {selected && (
               <circle
                 r={p.r + 9}
@@ -280,7 +345,7 @@ export default function Orrery({
               />
             )}
 
-            {/* generous invisible hit area */}
+            {/* generous invisible hit area — see hitR note above */}
             <circle r={hitR} fill="transparent" />
 
             {labelVisible(p) && (

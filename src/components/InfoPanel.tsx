@@ -1,3 +1,31 @@
+/*
+ * InfoPanel.tsx — the learning side of the app (right column on
+ * desktop, bottom sheet on mobile; App.tsx mounts it in both places).
+ *
+ * TWO MODES, switched by selectedId:
+ *
+ *   selectedId === null  →  INDEX
+ *       The "System bodies" list — one row per body from BODIES with a
+ *       color chip, its class, and its compact orbital period. This is
+ *       the fallback view and the answer to "what can I click?".
+ *
+ *   selectedId === "…"   →  DOSSIER
+ *       Header (back-to-index + name + class chip), then:
+ *       · live telemetry  — orbits completed, recomputed from the same
+ *                           simDays the map uses, so the counter and
+ *                           the planet's position never disagree.
+ *                           (For the Sun we count rotations instead —
+ *                           25.4 d is its equatorial spin period.)
+ *       · stat grid       — diameter, distance, period, day, moons,
+ *                           temperature. All values from bodies.ts.
+ *       · size bar        — visual size-vs-Earth comparison.
+ *       · field note      — one curated fun fact per body.
+ *
+ * RENDERING TRICK: key={body.id} on the scroll container forces a
+ * remount when you switch planets, which replays the .fade-slide entry
+ * animation (defined in index.css). Remove the key and the slide dies.
+ */
+
 import {
   BODIES,
   EARTH_DIAMETER_KM,
@@ -13,6 +41,15 @@ interface InfoPanelProps {
   onSelect: (id: string | null) => void;
 }
 
+/**
+ * Width of the "size vs Earth" bar, in %.
+ * A linear scale is useless here — Mercury (0.38× Earth) and Jupiter
+ * (11×) would both look like slivers next to each other. So the bar
+ * runs on log10(ratio), mapped onto an 8–100% width window: it's honest
+ * about ORDER (bigger = longer) while the "× Earth" figure beside it
+ * carries the exact magnitude. Adjust lo/hi if you add a body more
+ * extreme than 0.3×–110× Earth.
+ */
 function sizeBarPercent(diameterKm: number): number {
   const ratio = diameterKm / EARTH_DIAMETER_KM;
   const lo = Math.log10(0.3);
@@ -21,6 +58,7 @@ function sizeBarPercent(diameterKm: number): number {
   return Math.min(100, Math.max(7, 8 + t * 92));
 }
 
+/** one cell of the stat grid — label / big value / optional context line */
 function Stat({
   label,
   value,
@@ -49,8 +87,9 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
   return (
     <div className="flex max-h-full min-h-0 flex-col">
       {body ? (
-        /* ------------------------------ dossier ------------------------------ */
+        /* ═══════════════════ MODE 1: DOSSIER ═══════════════════ */
         <div className="flex min-h-0 flex-col">
+          {/* header: back-to-index button + "Dossier" eyebrow */}
           <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
             <button
               onClick={() => onSelect(null)}
@@ -66,7 +105,9 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
             </span>
           </div>
 
+          {/* key= remounts per body → replays .fade-slide (see header) */}
           <div key={body.id} className="panel-scroll fade-slide min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            {/* name + class chip */}
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2.5">
@@ -84,7 +125,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
               </div>
             </div>
 
-            {/* live telemetry */}
+            {/* live telemetry — the "it's running" heartbeat of the panel */}
             <div className="mt-5 rounded-lg border border-ember/25 bg-ember/[0.05] px-4 py-3">
               {body.periodDays > 0 ? (
                 <>
@@ -103,6 +144,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
                   </div>
                 </>
               ) : (
+                /* Sun branch: it doesn't orbit, so we count its spin */
                 <>
                   <div className="flex items-baseline gap-2">
                     <span className="font-display text-2xl font-bold text-ember-soft">
@@ -119,7 +161,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
               )}
             </div>
 
-            {/* stats */}
+            {/* stat grid — the four facts the brief asks for + extras */}
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <Stat
                 label="Diameter"
@@ -147,7 +189,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
               <Stat label="Temperature" value={body.tempC} />
             </div>
 
-            {/* size comparison */}
+            {/* size comparison (log-scaled bar — see sizeBarPercent) */}
             <div className="mt-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
@@ -170,7 +212,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
               </div>
             </div>
 
-            {/* fact */}
+            {/* field note — the one-liner that makes it stick */}
             <div className="mt-5 border-l-2 border-ember/70 bg-white/[0.03] py-3 pl-4 pr-3">
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ember-soft/80">
                 Field note
@@ -180,7 +222,7 @@ export default function InfoPanel({ selectedId, simDays, onSelect }: InfoPanelPr
           </div>
         </div>
       ) : (
-        /* ------------------------------- index ------------------------------- */
+        /* ═══════════════════ MODE 2: INDEX ═══════════════════ */
         <div className="flex min-h-0 flex-col">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-display text-sm font-bold uppercase tracking-[0.28em] text-ink">
