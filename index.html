@@ -1,0 +1,37 @@
+<!doctype html>
+<!--
+  index.html — minimal shell on purpose.
+  · Fonts: Orbitron (display) + Space Grotesk (body) from Google Fonts;
+    mapped to font-display / font-body in src/index.css @theme.
+  · The inline <style> paints the page deep-space black BEFORE React
+    mounts, so there's never a white flash on load. Don't remove it.
+  · Everything else lives in src/ — start reading at src/App.tsx.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="The Orrery — an interactive solar system. Watch the eight planets orbit the Sun, then click any world to inspect its size, distance and year." />
+    <title>The Orrery — Interactive Solar System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #04070f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
