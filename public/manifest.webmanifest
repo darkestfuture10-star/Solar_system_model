@@ -1,0 +1,25 @@
+{
+  "name": "The Orrery — Interactive Solar System",
+  "short_name": "Orrery",
+  "description": "Watch the eight planets orbit the Sun, then click any world to inspect its size, distance and year.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04070f",
+  "theme_color": "#04070f",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

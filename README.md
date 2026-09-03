@@ -74,3 +74,34 @@ Because all planets divide the *same* clock by their *real* period, relative spe
 - The starfield layer is intentionally **oversized 18%** so its CSS rotation never shows corners.
 - `key={body.id}` on the dossier scroller is what replays the slide-in animation when switching planets.
 - The rAF loop reads `playing`/`speed` through **refs** on purpose — restarting the effect on every toggle would cause a time jump.
+
+## → Android
+
+The repo ships ready for two routes: **Capacitor** (real APK, works offline) and the **PWA/TWA** path (site installed via Chrome). Both start from the same `npm run build` output.
+
+### Zero-setup smoke test (PWA)
+
+1. `npm run build`, then deploy `dist/` to any static host (Netlify, Vercel, GitHub Pages…).
+2. Open it in Chrome on a phone → menu → **Install app / Add to Home screen**.
+
+You get a full-screen, icon-on-home-screen app with offline support — that's `public/manifest.webmanifest` + `public/sw.js` doing their job. Same trick later becomes a Play-Store listing via [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) (Trusted Web Activity) if you'd rather update by redeploying the site.
+
+### Real APK via Capacitor (recommended)
+
+**You need:** [Android Studio](https://developer.android.com/studio) (it bundles JDK 17 and the Android SDK — accept every installer prompt). A phone with USB debugging, or the bundled Pixel emulator.
+
+```bash
+npm run build
+npx cap add android      # once — generates the android/ project
+npx cap sync android     # after every web build — copies dist/ in
+npx cap open android     # opens Android Studio → press ▶ Run
+```
+
+- Change `appId` in `capacitor.config.ts` to a reverse-domain you own before the first `cap add`.
+- **Launcher icon:** the generated project uses a generic icon. Export `public/icons/icon.svg` as a 1024×1024 PNG and run `npx @capacitor/assets generate --android` to build proper adaptive icons.
+- **Play Store:** one-time $25 developer account, then Android Studio → Build → Generate Signed App Bundle (AAB). The app needs no permissions and no backend, so review is usually painless.
+- **Git:** commit the generated `android/` folder (it *is* the project); ignore its `.gradle/`, `build/` and `app/build/` output dirs.
+
+### Why not rewrite it natively?
+
+The whole app is one SVG driven by a clock — nothing here benefits from Kotlin, and you'd lose the web version. Capacitor keeps one codebase and ships both.
